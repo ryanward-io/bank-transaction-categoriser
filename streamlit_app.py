@@ -3,8 +3,7 @@
 Learns spending categories (Food, Myki, Supermarket, ...) from the text of a bank transaction
 description. Runs entirely in the browser via stlite (Streamlit on Pyodide); see index.html.
 
-Originally a 2019 script (`bankclassifier`), rebuilt in 2026 with a pipeline, an honest evaluation
-(see "Why the first version looked too good") and an interactive front end.
+Rebuilt in 2026 as a scikit-learn pipeline with an honest evaluation and an interactive front end.
 """
 import altair as alt
 import numpy as np
@@ -73,7 +72,7 @@ def honest_cv(vec_name, model_name):
 
 @st.cache_data
 def leaky_accuracy(vec_name, model_name):
-    """The first version's method: split the raw rows at random, so repeats of the same description land on both sides."""
+    """Score a random split of the raw rows, where repeats of a description land on both sides (shown only for comparison)."""
     df = load_data()
     rows = df.loc[df.index.repeat(df["count"])].reset_index(drop=True)
     scores = []
@@ -113,7 +112,7 @@ baseline = float((data["category"] == majority).mean())
 st.title("Bank transaction categoriser")
 st.write(
     "Can a model learn your spending categories from nothing but the text on a bank statement? "
-    "Type a transaction below and see which category it picks, then look at how well it really does."
+    "Type a transaction below and see which category it picks, then look at how well it does."
 )
 st.caption(
     f"Trained on {n_rows} labelled transactions ({n_distinct} distinct descriptions) from my own account. "
@@ -208,40 +207,16 @@ with st.expander("Confusion matrix and per-category scores"):
     report["Distinct descriptions"] = report["Distinct descriptions"].astype(int)
     st.dataframe(report.round(2))
 
-st.header("3. Why the first version looked too good")
-leaky, n_leaky = leaky_accuracy(vec_name, model_name)
-st.write(
-    f"My original 2019 script split the {n_rows} raw transactions at random into train and test. But those "
-    f"{n_rows} rows contain only {n_distinct} distinct descriptions: 'Powershop - Direct Debit' alone appears 49 "
-    "times, Uber 38 times. A random split puts copies of the same description on both sides, so the model is "
-    "partly marked on questions it has already seen."
-)
-cmp_df = pd.DataFrame(
-    {
-        "Method": ["Random split of raw rows (original)", "Unseen descriptions only (this page)"],
-        "Accuracy": [leaky, acc],
-    }
-)
-bars = (
-    alt.Chart(cmp_df)
-    .mark_bar()
-    .encode(
-        x=alt.X("Accuracy:Q", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%")),
-        y=alt.Y("Method:N", sort=None, title=None, axis=alt.Axis(labelLimit=320)),
-        color=alt.Color("Method:N", legend=None),
+with st.expander("Why score on unseen descriptions?"):
+    leaky, n_leaky = leaky_accuracy(vec_name, model_name)
+    st.write(
+        f"The {n_rows} transactions contain only {n_distinct} distinct descriptions ('Powershop - Direct Debit' "
+        "alone appears 49 times). A random split of the raw rows would put copies of the same description in both "
+        f"train and test and overstate the result: about {leaky:.0%} for this model, against {acc:.0%} on "
+        "descriptions it has never seen."
     )
-    .properties(height=alt.Step(44))
-)
-labels_chart = bars.mark_text(align="right", dx=-6, color="white", fontWeight="bold").encode(
-    text=alt.Text("Accuracy:Q", format=".0%")
-)
-st.altair_chart(bars + labels_chart, use_container_width=True)
-st.write(
-    f"For this model the original method reports about {leaky:.0%}; the honest figure is {acc:.0%}. "
-    "The gap is the difference between memorising descriptions and recognising new ones."
-)
 
-st.header("4. Compare every combination")
+st.header("3. Compare every combination")
 if st.button("Run all 15 combinations"):
     with st.spinner("Fitting 75 models..."):
         results = compare_all()

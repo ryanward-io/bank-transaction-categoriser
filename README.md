@@ -8,7 +8,6 @@ A small machine-learning project: learn spending categories (Food, Myki, Superma
 
 - **Try it:** type a transaction description (or click an example) and see the predicted category with probabilities. Pick the text features and the model.
 - **How well does it work:** accuracy, macro F1 and the "always guess Food" baseline, plus a confusion matrix and per-category scores.
-- **Why the first version looked too good:** my 2019 script reported about 97% accuracy. Scored properly it is about 83% (59% is the do-nothing baseline). The explanation is in the app and below.
 - **Compare every combination:** 3 feature types x 5 models, scored the same way.
 
 ## How it runs
@@ -17,11 +16,9 @@ There is no server. The app is a [Streamlit](https://streamlit.io) script runnin
 
 Run it locally with `python3 -m http.server 8000`, or as a normal Streamlit app with `pip install streamlit scikit-learn altair pandas && streamlit run streamlit_app.py`.
 
-## The evaluation, and what was wrong with the original
+## The evaluation
 
-The original project ([`bankclassifier`](https://github.com/ryanward-io/bankclassifier), 2019) split the raw transactions at random into train and test. But 881 transactions contain only **246 distinct descriptions**: "Powershop - Direct Debit" appears 49 times and Uber 38 times. A random split puts copies of the same description on both sides, so the model is partly marked on questions it has already seen.
-
-Here, accuracy comes from 5-fold cross-validation over the *distinct* descriptions (fixed seed), so every description is scored by a model that never saw it. For the default model that gives about 83% accuracy against 97% for the original method.
+Accuracy comes from 5-fold cross-validation over the *distinct* descriptions (fixed seed), so every description is scored by a model that never saw it. The 881 transactions contain only 246 distinct descriptions ("Powershop - Direct Debit" appears 49 times), so a random split of the raw rows would put copies on both sides and overstate the result (about 97% instead of 83% for the default model). The do-nothing baseline of always guessing 'Food' scores 59%.
 
 Macro F1 (about 0.5) is much lower than accuracy because the categories are very imbalanced: 'Food' is a catch-all (145 of 246 descriptions) while Petrol has 3, Spotify 1 and Swimming 1. On a dataset this small the differences between the better models are within noise.
 
@@ -32,7 +29,7 @@ Macro F1 (about 0.5) is much lower than accuracy because the categories are very
 - Person-to-person payment lines, which carried names, phone numbers and BSB/account numbers, and free-text memos.
 - A handful of lines that could be a person's name or reveal an affiliation.
 - Dates (there are no amounts). Employer-identifying salary lines are replaced with a generic payroll description.
-- Descriptions that were labelled inconsistently in the original were dropped.
+- Descriptions that had conflicting labels were dropped.
 
 Labels were not otherwise changed, so some are questionable (some taxis are labelled Food). That is realistic, and it caps the achievable score.
 
@@ -44,7 +41,7 @@ Labels were not otherwise changed, so some are questionable (some taxis are labe
 
 ## History
 
-Originally written in 2019 as `bankclassifier` (a script comparing vectorisers and models). Rebuilt in 2026 as a scikit-learn pipeline with an honest evaluation and a browser front end.
+Started in 2019 as a script comparing vectorisers and models; rebuilt in 2026 as a scikit-learn pipeline with a browser front end.
 
 ## Licence
 
